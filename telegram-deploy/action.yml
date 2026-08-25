@@ -11,7 +11,7 @@ inputs:
     description: "Human-readable project name, e.g. faro-api"
     required: true
   status:
-    description: "success | failure | cancelled — usually ${{ job.status }}"
+    description: "success, failure, or cancelled — pass in the caller's job status"
     required: true
   environment:
     description: "production | staging | dev — optional"
