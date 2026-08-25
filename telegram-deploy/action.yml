@@ -1,0 +1,50 @@
+name: "Telegram Deploy Notify"
+description: "Posts a deploy status message to Telegram after a workflow job finishes"
+inputs:
+  bot-token:
+    description: "Telegram bot token"
+    required: true
+  chat-id:
+    description: "Telegram chat id to notify"
+    required: true
+  project:
+    description: "Human-readable project name, e.g. faro-api"
+    required: true
+  status:
+    description: "success | failure | cancelled — usually ${{ job.status }}"
+    required: true
+  environment:
+    description: "production | staging | dev — optional"
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - name: Send Telegram notification
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        case "${{ inputs.status }}" in
+          success) EMOJI="✅" ;;
+          failure) EMOJI="❌" ;;
+          cancelled) EMOJI="⚠️" ;;
+          *) EMOJI="ℹ️" ;;
+        esac
+
+        ENV_LINE=""
+        if [ -n "${{ inputs.environment }}" ]; then
+          ENV_LINE=$'\n'"Ambiente: ${{ inputs.environment }}"
+        fi
+
+        TEXT="${EMOJI} *${{ inputs.project }}* — ${{ inputs.status }}
+        Repo: ${GITHUB_REPOSITORY}
+        Commit: \`${GITHUB_SHA:0:7}\`
+        Branch: ${GITHUB_REF_NAME}
+        Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}${ENV_LINE}"
+
+        curl -sS -X POST "https://api.telegram.org/bot${{ inputs.bot-token }}/sendMessage" \
+          -d chat_id="${{ inputs.chat-id }}" \
+          -d parse_mode="Markdown" \
+          --data-urlencode text="${TEXT}" \
+          > /dev/null
